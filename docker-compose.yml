@@ -1,0 +1,122 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: godseye_redis
+    networks:
+      - godseye_net
+
+  db:
+    image: postgres:15-alpine
+    container_name: godseye_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-godseye}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-godseye}
+      POSTGRES_DB: ${POSTGRES_DB:-godseye}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - godseye_net
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: godseye_api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://godseye:godseye@db:5432/godseye}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      JWT_SECRET: ${JWT_SECRET:-dev-change-me}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      DATA_DIR: /data
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@example.com}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-change-me}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-0}
+    depends_on:
+      - redis
+      - db
+    volumes:
+      - uploads_data:/data
+    networks:
+      - godseye_net
+
+  worker:
+    build:
+      context: .
+      dockerfile: services/worker/Dockerfile
+    container_name: godseye_worker
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://godseye:godseye@db:5432/godseye}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      EVENTS_CHANNEL: ${EVENTS_CHANNEL:-godseye.events}
+      DATA_DIR: /data
+    depends_on:
+      - redis
+      - db
+    volumes:
+      - uploads_data:/data
+    networks:
+      - godseye_net
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: services/worker/Dockerfile
+    container_name: godseye_scheduler
+    command: ["bash", "/app/scripts/scheduler-entrypoint.sh"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://godseye:godseye@db:5432/godseye}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      EVENTS_CHANNEL: ${EVENTS_CHANNEL:-godseye.events}
+      DATA_DIR: /data
+    depends_on:
+      - redis
+      - db
+    volumes:
+      - uploads_data:/data
+    networks:
+      - godseye_net
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://localhost:8000}
+      NEXT_PUBLIC_WS_BASE: ${NEXT_PUBLIC_WS_BASE:-ws://localhost:8000}
+    depends_on:
+      - api
+    networks:
+      - godseye_net
+
+  # Optional observability stubs (disabled by default)
+  prometheus:
+    profiles: ["observability"]
+    image: prom/prometheus:v2.52.0
+    container_name: godseye_prometheus
+    volumes:
+      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - godseye_net
+
+  grafana:
+    profiles: ["observability"]
+    image: grafana/grafana:11.1.0
+    container_name: godseye_grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - godseye_net
+
+networks:
+  godseye_net:
+    driver: bridge
+
+volumes:
+  db_data:
+  uploads_data:
