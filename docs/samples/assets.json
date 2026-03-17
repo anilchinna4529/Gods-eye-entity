@@ -1,0 +1,16 @@
+[
+  {
+    "hostname": "web-01",
+    "ip": "10.0.0.10",
+    "owner": "platform",
+    "tags": ["prod", "linux", "dmz"],
+    "metadata": { "env": "prod", "tier": "web" }
+  },
+  {
+    "hostname": "db-01",
+    "ip": "10.0.0.20",
+    "owner": "data",
+    "tags": ["prod", "postgres"],
+    "metadata": { "env": "prod", "tier": "db" }
+  }
+]

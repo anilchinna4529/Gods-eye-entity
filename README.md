@@ -32,3 +32,11 @@ Bring up Prometheus + Grafana stubs:
 ```powershell
 docker compose --profile observability up --build
 ```
+
+## Optional: SIEM/Search Profile
+
+Bring up OpenSearch + OpenSearch Dashboards stubs:
+
+```powershell
+docker compose --profile siem up --build
+```

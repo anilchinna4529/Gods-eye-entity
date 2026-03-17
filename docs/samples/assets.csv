@@ -1,0 +1,4 @@
+hostname,ip,owner,tags
+web-01,10.0.0.10,platform,"prod,linux,dmz"
+db-01,10.0.0.20,data,"prod,postgres"
+jump-01,10.0.0.5,security,"admin,windows"
